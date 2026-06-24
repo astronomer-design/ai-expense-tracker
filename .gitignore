@@ -1,0 +1,9 @@
+# Secret Environment Variables
+.env
+
+# Python Virtual Environment
+venv/
+__pycache__/
+
+# Local SQLite Database (We want a fresh one in the cloud)
+expenses.db
