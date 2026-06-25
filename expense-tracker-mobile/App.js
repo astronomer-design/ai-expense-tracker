@@ -5,7 +5,10 @@ import * as ImagePicker from 'expo-image-picker'; // <-- We added the image pick
 export default function App() {
   const [dashboardData, setDashboardData] = useState(null);
   const [forecastData, setForecastData] = useState(null);
+  const [aiMode, setAiMode] = useState("toast"); // Defaults to nice!
   const [loading, setLoading] = useState(true);
+  const [aiResponse, setAiResponse] = useState(""); // <-- ADD THIS
+  const [aiLoading, setAiLoading] = useState(false); // <-- ADD THIS
 
   useEffect(() => {
     fetchDashboardData();
@@ -14,12 +17,12 @@ export default function App() {
   const fetchDashboardData = async () => {
     try {
       // 1. Fetch Current Data (Temporarily back to LOCAL for testing)
-      const resDash = await fetch('http://127.0.0.1:8000/users/1/dashboard');
+      const resDash = await fetch('https://ai-expense-tracker-backend-vs7z.onrender.com/users/1/dashboard');
       const dataDash = await resDash.json();
       setDashboardData(dataDash);
 
       // 2. Fetch Future Forecast (Local only right now!)
-      const resForecast = await fetch('http://127.0.0.1:8000/users/1/forecast');
+      const resForecast = await fetch('https://ai-expense-tracker-backend-vs7z.onrender.com/users/1/forecast');
       const dataForecast = await resForecast.json();
       setForecastData(dataForecast);
 
@@ -31,19 +34,22 @@ export default function App() {
   };
 
   const handleAskAI = async () => {
-    const question = "How much did I spend on food?";
+    setAiLoading(true);
+    setAiResponse(""); // Clears the previous message
+
+    const question = "Analyze my recent spending.";
     try {
-      const response = await fetch(`https://ai-expense-tracker-backend-vs7z.onrender.com/users/1/chat?query=${question}`);
+      // (Make sure this URL is pointing to your live Render link or 127.0.0.1 depending on where you are testing!)
+      const response = await fetch(`http://127.0.0.1:8000/users/1/chat?query=${question}&mode=${aiMode}`);
       const data = await response.json();
 
-      if (Platform.OS === 'web') {
-        window.alert("🤖 Financial AI Assistant\n\n" + data.response);
-      } else {
-        Alert.alert("🤖 Financial AI Assistant", data.response);
-      }
+      // Save the AI's words to our new variable instead of an Alert
+      setAiResponse(data.reply);
     } catch (error) {
-      if (Platform.OS === 'web') window.alert("Error connecting to AI.");
-      else Alert.alert("Error", "Could not connect to the AI.");
+      console.error("AI Error:", error);
+      setAiResponse("Whoops! The AI is taking a nap. Try again.");
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -159,7 +165,45 @@ export default function App() {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondaryButton} onPress={handleAskAI}>
+          {/* --- ROAST VS TOAST TOGGLE --- */}
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 15 }}>
+            <TouchableOpacity
+              onPress={() => setAiMode("toast")}
+              style={{
+                backgroundColor: aiMode === "toast" ? '#10B981' : '#334155',
+                padding: 10,
+                borderTopLeftRadius: 8,
+                borderBottomLeftRadius: 8,
+              }}>
+              <Text style={{ color: 'white', fontWeight: 'bold' }}>🍞 Toast Me</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setAiMode("roast")}
+              style={{
+                backgroundColor: aiMode === "roast" ? '#EF4444' : '#334155',
+                padding: 10,
+                borderTopRightRadius: 8,
+                borderBottomRightRadius: 8,
+              }}>
+              <Text style={{ color: 'white', fontWeight: 'bold' }}>🔥 Roast Me</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.secondaryButtonText}>💬 Ask AI Assistant</Text>
+          {/* --- AI RESPONSE DISPLAY --- */}
+          {aiLoading && (
+            <Text style={{ color: '#94A3B8', textAlign: 'center', marginTop: 15, fontStyle: 'italic' }}>
+              Gemini is analyzing your terrible financial choices...
+            </Text>
+          )}
+
+          {aiResponse !== "" && !aiLoading && (
+            <View style={[styles.card, { backgroundColor: '#334155', marginTop: 15, borderWidth: 1, borderColor: aiMode === 'roast' ? '#EF4444' : '#10B981' }]}>
+              <Text style={{ color: '#F8FAFC', fontSize: 16, lineHeight: 24 }}>
+                {aiResponse}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
 
       </ScrollView>

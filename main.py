@@ -1,4 +1,6 @@
 import forecasting
+import os
+import google.generativeai as genai
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -9,6 +11,21 @@ import ml_models
 import analytics  # <-- We brought your new Analytics Brain into the main app!
 import chatbot
 from database import engine, SessionLocal
+from dotenv import load_dotenv
+
+# Load the secret variables first!
+load_dotenv()
+
+# Configure Google Gemini
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+# Configure Google Gemini
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+# Define the model globally right here!
+model = genai.GenerativeModel('gemini-2.5-flash')
+
+app = FastAPI()
 
 # Create the database tables
 models.Base.metadata.create_all(bind=engine)
@@ -116,16 +133,34 @@ def get_user_dashboard(user_id: int, db: Session = Depends(get_db)):
     
     return dashboard_data
 
+from google.api_core import exceptions as google_exceptions
+
 @app.get("/users/{user_id}/chat")
-def chat_with_ai(user_id: int, query: str, db: Session = Depends(get_db)):
-    # 1. Grab the user's latest dashboard data
+def chat_with_ai(user_id: int, query: str, mode: str = "toast", db: Session = Depends(get_db)):
     transactions = db.query(models.Transaction).filter(models.Transaction.owner_id == user_id).all()
-    dashboard_data = analytics.generate_financial_summary(transactions)
-
-    # 2. Send their question and data to the AI
-    ai_response = chatbot.ask_financial_assistant(query, dashboard_data)
-
-    return {"response": ai_response}
+    
+    if mode == "roast":
+        personality = """You are a ruthless, sarcastic, and hilarious financial auditor. 
+        Look at the user's spending data and ROAST them for their terrible financial decisions. 
+        Be mean, be witty, and use harsh truths."""
+    else:
+        personality = """You are a warm, highly encouraging financial advisor. 
+        Look at the user's spending data and TOAST them for their efforts. 
+        Be highly supportive, celebrate small wins, and use an uplifting tone."""
+        
+    full_prompt = f"{personality}\n\nHere is their data: {transactions}\n\nUser Question: {query}"
+    
+    try:
+        response = model.generate_content(full_prompt)
+        return {"reply": response.text}
+    except google_exceptions.ResourceExhausted:
+        # If Google rate limits you, send a funny fallback response back to the app!
+        if mode == "roast":
+            return {"reply": "🔥 [System Alert]: The AI wanted to roast you harder, but you're spending money so fast you broke the API rate limit. Slow down!"}
+        else:
+            return {"reply": "🍞 [System Alert]: You are doing so great that our servers are taking a quick 30-second breather. Try asking me again in a moment!"}
+    except Exception as e:
+        return {"reply": f"An unexpected error occurred: {str(e)}"}
 
 @app.get("/users/{user_id}/forecast")
 def get_user_forecast(user_id: int, db: Session = Depends(get_db)):
