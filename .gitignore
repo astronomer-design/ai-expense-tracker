@@ -7,3 +7,6 @@ __pycache__/
 
 # Local SQLite Database (We want a fresh one in the cloud)
 expenses.db
+
+# Google Vision/ML Credentials
+google_credentials.json

@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker'; // <-- We added the image pick
 
 export default function App() {
   const [dashboardData, setDashboardData] = useState(null);
+  const [forecastData, setForecastData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -12,9 +13,16 @@ export default function App() {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/users/1/dashboard');
-      const data = await response.json();
-      setDashboardData(data);
+      // 1. Fetch Current Data (Temporarily back to LOCAL for testing)
+      const resDash = await fetch('http://127.0.0.1:8000/users/1/dashboard');
+      const dataDash = await resDash.json();
+      setDashboardData(dataDash);
+
+      // 2. Fetch Future Forecast (Local only right now!)
+      const resForecast = await fetch('http://127.0.0.1:8000/users/1/forecast');
+      const dataForecast = await resForecast.json();
+      setForecastData(dataForecast);
+
       setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -25,7 +33,7 @@ export default function App() {
   const handleAskAI = async () => {
     const question = "How much did I spend on food?";
     try {
-      const response = await fetch(`http://127.0.0.1:8000/users/1/chat?query=${question}`);
+      const response = await fetch(`https://ai-expense-tracker-backend-vs7z.onrender.com/users/1/chat?query=${question}`);
       const data = await response.json();
 
       if (Platform.OS === 'web') {
@@ -67,7 +75,7 @@ export default function App() {
         formData.append('file', imageBlob, 'receipt.jpg');
 
         // Send it to the ML Brain!
-        const response = await fetch('http://127.0.0.1:8000/upload-receipt/', {
+        const response = await fetch('https://ai-expense-tracker-backend-vs7z.onrender.com/upload-receipt/', {
           method: 'POST',
           body: formData,
         });
@@ -115,6 +123,20 @@ export default function App() {
           <Text style={styles.score}>{dashboardData?.health_score || 0} / 100</Text>
           <Text style={styles.advice}>
             "{dashboardData?.financial_advice || "No advice available."}"
+          </Text>
+        </View>
+
+        {/* --- BRAND NEW PREDICTIVE FORECAST CARD --- */}
+        <View style={[styles.card, { backgroundColor: '#1E293B' }]}>
+          <Text style={[styles.cardTitle, { color: '#94A3B8' }]}>🔮 Next Week's Forecast</Text>
+          <Text style={[styles.score, { color: '#FFFFFF' }]}>
+            ${(forecastData?.predicted_7_day_spend || 0).toFixed(2)}
+          </Text>
+          <Text style={{ color: '#FBBF24', fontWeight: 'bold', marginBottom: 5 }}>
+            {forecastData?.status_flag} (Velocity: ${forecastData?.daily_velocity}/day)
+          </Text>
+          <Text style={[styles.advice, { color: '#CBD5E1' }]}>
+            {forecastData?.smart_advice}
           </Text>
         </View>
 

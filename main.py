@@ -1,3 +1,4 @@
+import forecasting
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -125,3 +126,14 @@ def chat_with_ai(user_id: int, query: str, db: Session = Depends(get_db)):
     ai_response = chatbot.ask_financial_assistant(query, dashboard_data)
 
     return {"response": ai_response}
+
+@app.get("/users/{user_id}/forecast")
+def get_user_forecast(user_id: int, db: Session = Depends(get_db)):
+    # 1. Grab their current data
+    transactions = db.query(models.Transaction).filter(models.Transaction.owner_id == user_id).all()
+    dashboard_data = analytics.generate_financial_summary(transactions)
+    
+    # 2. Run it through the predictive engine
+    forecast = forecasting.generate_weekly_forecast(dashboard_data)
+    
+    return forecast
