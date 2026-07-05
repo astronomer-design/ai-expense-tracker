@@ -2,11 +2,15 @@
 .env
 
 # Python Virtual Environment
-venv/
+.venv/
 __pycache__/
 
-# Local SQLite Database (We want a fresh one in the cloud)
-expenses.db
+# Local Database
+*.db
 
 # Google Vision/ML Credentials
 google_credentials.json
+
+# React Native / Expo Frontend ignores
+expense-tracker-mobile/node_modules/
+expense-tracker-mobile/.expo/

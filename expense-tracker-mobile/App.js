@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Dimensions } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
 import * as ImagePicker from 'expo-image-picker'; // <-- We added the image picker!
 
 export default function App() {
@@ -40,7 +41,7 @@ export default function App() {
     const question = "Analyze my recent spending.";
     try {
       // (Make sure this URL is pointing to your live Render link or 127.0.0.1 depending on where you are testing!)
-      const response = await fetch(`http://127.0.0.1:8000/users/1/chat?query=${question}&mode=${aiMode}`);
+      const response = await fetch(`https://ai-expense-tracker-backend-vs7z.onrender.com/users/1/chat?query=${question}&mode=${aiMode}`);
       const data = await response.json();
 
       // Save the AI's words to our new variable instead of an Alert
@@ -132,36 +133,71 @@ export default function App() {
           </Text>
         </View>
 
-        {/* --- BRAND NEW PREDICTIVE FORECAST CARD --- */}
-        <View style={[styles.card, { backgroundColor: '#1E293B' }]}>
-          <Text style={[styles.cardTitle, { color: '#94A3B8' }]}>🔮 Next Week's Forecast</Text>
-          <Text style={[styles.score, { color: '#FFFFFF' }]}>
-            ${(forecastData?.predicted_7_day_spend || 0).toFixed(2)}
-          </Text>
-          <Text style={{ color: '#FBBF24', fontWeight: 'bold', marginBottom: 5 }}>
-            {forecastData?.status_flag} (Velocity: ${forecastData?.daily_velocity}/day)
-          </Text>
-          <Text style={[styles.advice, { color: '#CBD5E1' }]}>
-            {forecastData?.smart_advice}
-          </Text>
+        {/* --- GLOWING SPENDING TREND CHART --- */}
+        <View style={[styles.card, { padding: 0, overflow: 'hidden', paddingBottom: 10 }]}>
+          <Text style={[styles.cardTitle, { padding: 20, paddingBottom: 5 }]}>📈 6-Month Spending Trend</Text>
+          <LineChart
+            data={{
+              labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+              datasets: [{ data: [120, 210, 150, 310, 280, 190] }]
+            }}
+            width={Dimensions.get("window").width - 40} // Auto-sizes to your screen!
+            height={220}
+            yAxisLabel="$"
+            yAxisInterval={1}
+            chartConfig={{
+              backgroundColor: '#1E293B',
+              backgroundGradientFrom: '#1E293B',
+              backgroundGradientTo: '#0F172A',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`, // Glowing Electric Green
+              labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
+              style: { borderRadius: 16 },
+              propsForDots: {
+                r: "6",
+                strokeWidth: "2",
+                stroke: "#0F172A"
+              }
+            }}
+            bezier // This makes the line beautifully curved instead of jagged!
+            style={{ marginVertical: 8, borderRadius: 16 }}
+          />
         </View>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Total Spent</Text>
-            <Text style={styles.statValue}>${(dashboardData?.total_spent || 0).toFixed(2)}</Text>
+        {/* --- BULLETPROOF PREDICTIVE FORECAST CARD --- */}
+        {!forecastData ? (
+          <View style={[styles.card, { backgroundColor: '#1E293B', alignItems: 'center', paddingVertical: 30 }]}>
+            <Text style={{ color: '#94A3B8', fontStyle: 'italic' }}>🔮 Booting up Predictive AI Engine...</Text>
           </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Categories</Text>
-            <Text style={styles.statValue}>
-              {Object.keys(dashboardData?.category_breakdown || {}).length}
+        ) : (
+          <View style={[styles.card, { backgroundColor: '#1E293B', borderColor: forecastData.daily_velocity > 100 ? '#EF4444' : '#334155' }]}>
+            <Text style={styles.cardTitle}>🔮 Next Week's Forecast</Text>
+            <Text style={styles.score}>
+              ${(forecastData.predicted_7_day_spend).toFixed(2)}
+            </Text>
+
+            <Text style={{ color: forecastData.daily_velocity > 100 ? '#EF4444' : '#FBBF24', fontWeight: '700', marginBottom: 12, fontSize: 13 }}>
+              {forecastData.status_flag} (Velocity: ${forecastData.daily_velocity}/day)
+            </Text>
+
+            {/* VISUAL VELOCITY GAUGE TRACK */}
+            <View style={{ height: 6, backgroundColor: '#334155', borderRadius: 3, width: '100%', marginBottom: 15, overflow: 'hidden' }}>
+              <View style={{
+                height: '100%',
+                backgroundColor: forecastData.daily_velocity > 100 ? '#EF4444' : forecastData.daily_velocity > 50 ? '#FBBF24' : '#10B981',
+                width: `${Math.min((forecastData.daily_velocity / 150) * 100, 100)}%`
+              }} />
+            </View>
+
+            <Text style={styles.advice}>
+              {forecastData.smart_advice}
             </Text>
           </View>
-        </View>
+        )}
 
-        {/* Wired up the Scanner Button! */}
-        <TouchableOpacity style={styles.primaryButton} onPress={handleScanReceipt}>
-          <Text style={styles.primaryButtonText}>📸 Scan New Receipt</Text>
+        {/* --- UPGRADED RECEIPT SCANNER BUTTON --- */}
+        <TouchableOpacity style={styles.button} onPress={handleScanReceipt}>
+          <Text style={styles.buttonText}>📷 Scan New Receipt</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondaryButton} onPress={handleAskAI}>
@@ -189,7 +225,10 @@ export default function App() {
               <Text style={{ color: 'white', fontWeight: 'bold' }}>🔥 Roast Me</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.secondaryButtonText}>💬 Ask AI Assistant</Text>
+          {/* --- UPGRADED AI CHAT BUTTON --- */}
+          <TouchableOpacity style={[styles.button, { marginTop: 20 }]} onPress={handleAskAI}>
+            <Text style={styles.buttonText}>💬 Ask AI Assistant</Text>
+          </TouchableOpacity>
           {/* --- AI RESPONSE DISPLAY --- */}
           {aiLoading && (
             <Text style={{ color: '#94A3B8', textAlign: 'center', marginTop: 15, fontStyle: 'italic' }}>
@@ -213,21 +252,82 @@ export default function App() {
 
 // --- STYLES ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F4F6F9' },
-  scrollContent: { padding: 20, paddingTop: 40 },
-  header: { marginBottom: 30 },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1E293B' },
-  headerSubtitle: { fontSize: 16, color: '#64748B', marginTop: 5 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 25, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5, alignItems: 'center', marginBottom: 20 },
-  cardTitle: { fontSize: 18, fontWeight: '600', color: '#475569' },
-  score: { fontSize: 48, fontWeight: 'bold', color: '#10B981', marginVertical: 10 },
-  advice: { fontSize: 14, color: '#64748B', textAlign: 'center', fontStyle: 'italic' },
-  statsContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 },
-  statBox: { backgroundColor: '#FFFFFF', width: '48%', borderRadius: 15, padding: 20, alignItems: 'center' },
-  statLabel: { fontSize: 14, color: '#64748B', marginBottom: 5 },
-  statValue: { fontSize: 22, fontWeight: 'bold', color: '#1E293B' },
-  primaryButton: { backgroundColor: '#3B82F6', paddingVertical: 18, borderRadius: 15, alignItems: 'center', marginBottom: 15 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-  secondaryButton: { backgroundColor: '#E2E8F0', paddingVertical: 18, borderRadius: 15, alignItems: 'center' },
-  secondaryButtonText: { color: '#1E293B', fontSize: 18, fontWeight: '600' },
+  container: {
+    flex: 1,
+    backgroundColor: '#0F172A', // Deep slate space background
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  header: {
+    marginBottom: 25,
+    marginTop: 10,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#F8FAFC',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  card: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  score: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#F8FAFC',
+    marginVertical: 6,
+    letterSpacing: -1,
+  },
+  advice: {
+    fontSize: 14,
+    color: '#94A3B8',
+    lineHeight: 20,
+    fontStyle: 'italic',
+    marginTop: 5,
+  },
+  button: {
+    backgroundColor: '#3B82F6', // Vibrant electric blue
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+    marginTop: 10,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
 });
